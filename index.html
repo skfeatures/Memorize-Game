@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Match Game</title>
+    <title>Memory Challenge Game</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,6 +20,9 @@
             margin: 0;
             padding: 10px;
             min-height: 100vh;
+            /* Prevents selecting elements accidentally while tapping fast */
+            user-select: none; 
+            -webkit-user-select: none;
         }
 
         h1 {
@@ -86,13 +89,15 @@
             position: relative;
             cursor: pointer;
             border-radius: 50%;
+            /* Forces ultra-fast tap recognition by disabling browser zoom delays */
+            touch-action: manipulation; 
         }
 
         .card-inner {
             width: 100%;
             height: 100%;
             position: absolute;
-            transition: transform 0.4s;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Made flip animation slightly snappier */
             transform-style: preserve-3d;
             border-radius: 50%;
             box-shadow: 0 3px 6px rgba(0,0,0,0.3);
@@ -250,8 +255,8 @@
     <!-- Welcome Screen -->
     <div id="welcome-screen">
         <h1 id="welcome-title">
-            Memory Match
-            <span class="bengali-title">মেমোরি ম্যাচ</span>
+            Memory Challenge
+            <span class="bengali-title">মেমোরি চ্যালেন্জ</span>
         </h1>
         <div class="instructions">
             <p>
@@ -262,19 +267,19 @@
             <p>
                 ⏱️ <span class="highlight">Phase 2: Play Time (ধাপ ২: খেলার সময়)</span><br>
                 Once flipped, you have a strict time limit (L1: 2.8s, L2: 7s, L3: 12s, L4: 23s) to find all matching pairs.
-                <span class="bn-text">ব্লকগুলো উল্টে যাওয়ার পর, জোড়া মেলানোর জন্য নির্দিষ্ট সময় থাকবে (লেভেল ১: ২.৮ সে, লেভেল ২: ৭ সে, লেভেল ৩: ১২ সে, লেভেল ৪: ২৩ সে)।</span>
+                <span class="bn-text">ব্লকগুলো উল্টে যাওয়ার পর, জোড়া মেলানোর জন্য নির্দিষ্ট সময় থাকবে (লেভেল ১- ২.৮ সে, লেভেল ২- ৭ সে, লেভেল ৩- ১২ সে, লেভেল ৪- ২৩ সে)।</span>
             </p>
             <p>
                 ❌ <span class="highlight-red">Watch Your Moves (ভুল চালের সীমা)</span><br>
                 Wrong move limits: 1, 3, 5, and 11. Fail L3? 2 extra tries before dropping to L2. Fail L4? 2 extra tries before restarting at L1!
-                <span class="bn-text">ভুল চালের সীমা: ১, ৩, ৫ এবং ১১ বার। লেভেল ৩-এ ফেল করলে, লেভেল ২-এ ফেরার আগে ২ বার সুযোগ পাবেন। লেভেল ৪-এ ফেল করলে, লেভেল ১-এ ফিরে যাবেন!</span>
+                <span class="bn-text">ভুল চালের সীমা: লেভেল অনুযায়ী ১, ৩, ৫ এবং ১১ বার। লেভেল ৩-এ ফেল করলে, লেভেল ২-এ ফেরার আগে ২ বার সুযোগ পাবেন। লেভেল ৪-এ ফেল করলে ২বার সুযোগ সহ, লেভেল ১-এ ফিরে যাবেন!</span>
             </p>
         </div>
         <button class="btn" onclick="startGameFromWelcome()">Start Game<br><span style="font-size: 0.9rem; font-weight: normal;">খেলা শুরু করুন</span></button>
     </div>
 
     <!-- Main Game -->
-    <h1>Memory Match</h1>
+    <h1>Memory Challenge</h1>
 
     <div id="ui-container">
         <div class="ui-text">
@@ -422,7 +427,8 @@
                     </div>
                 `;
 
-                cardElement.addEventListener('click', flipCard);
+                // Upgraded to pointerdown for instant touch registration with 0ms delay!
+                cardElement.addEventListener('pointerdown', flipCard);
                 board.appendChild(cardElement);
             });
 
@@ -478,7 +484,10 @@
             lockBoard = false; 
         }
 
-        function flipCard() {
+        function flipCard(e) {
+            // Prevent default zooming/scrolling on mobile to keep game perfectly stable
+            e.preventDefault(); 
+            
             if (lockBoard) return;
             if (this === firstCard) return;
 
@@ -509,14 +518,13 @@
         }
 
         function disableCards() {
-            firstCard.removeEventListener('click', flipCard);
-            secondCard.removeEventListener('click', flipCard);
+            firstCard.removeEventListener('pointerdown', flipCard);
+            secondCard.removeEventListener('pointerdown', flipCard);
             matchedPairs++;
 
             if (matchedPairs === levels[currentLevelIndex].pairs) {
-                // INSTANTLY stop the timer so the remaining time is 100% accurate!
                 clearInterval(countdown); 
-                setTimeout(() => levelComplete(), 300);
+                setTimeout(() => levelComplete(), 250); // Sped up the win response slightly
             }
 
             resetBoard();
@@ -528,11 +536,10 @@
             movesDisplay.innerText = wrongMoves;
 
             if (wrongMoves >= levels[currentLevelIndex].maxWrongMoves) {
-                // If wrong moves limit reached, instantly lock and stop timer
                 clearInterval(countdown);
                 setTimeout(() => {
                     gameOver("Too many wrong moves.");
-                }, 400);
+                }, 300); // Sped up game over fail state slightly
                 return;
             }
 
@@ -540,7 +547,7 @@
                 firstCard.classList.remove('flipped');
                 secondCard.classList.remove('flipped');
                 resetBoard();
-            }, 500);
+            }, 400); // Cards flip back slightly faster so you can keep playing quickly
         }
 
         function resetBoard() {
@@ -551,7 +558,6 @@
         function levelComplete() {
             endScreen.style.display = 'flex';
             
-            // Added the "Time Left" indicator with Bengali translation
             endSubmessage.innerHTML = `
                 Current Score (বর্তমান স্কোর): ${score} <br>
                 Time Left (বাকি সময়): <span class="time-highlight">${timerDisplay.innerText}</span>
